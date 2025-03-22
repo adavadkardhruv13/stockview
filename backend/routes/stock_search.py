@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, status
 from fastapi.responses import JSONResponse
 # import yfinance
 from backend.auth import verify_jwt
-import sys, requests
+import sys, requests, logging
 sys.path.append(r"E:\stockview\venv\Lib\site-packages")
 import yfinance as yf
 
@@ -10,17 +10,28 @@ import yfinance as yf
 router = APIRouter()
 
 
+logger = logging.getLogger(__name__)
+
 @router.get("/{symbol}")
-async def get_stock_data(symbol: str, user_email: str = Depends(verify_jwt)):
+# async def get_stock_data(symbol: str, user_email: str = Depends(verify_jwt)):
+async def get_stock_data(symbol: str):
     try:
         stock = yf.Ticker(symbol)
         stock_info = stock.info
         
         
         if not stock_info:
-            return JSONResponse(status_code=404, content={"detail":"Stock not found"})
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "success": False,
+                    "data": None,
+                    "message": f"Stock {symbol} not found"
+                }
+            )
         
-        return{
+        response_data = {
             "company_name": stock_info.get("longName", "N/A"),
             "symbol": stock_info.get("symbol", "N/A"),
             "current_price": stock_info.get("currentPrice", "N/A"),
@@ -35,12 +46,45 @@ async def get_stock_data(symbol: str, user_email: str = Depends(verify_jwt)):
             "dividendRate": stock_info.get("dividendRate", "N/A"),
         }
         
+        return JSONResponse(
+            status_code = status.HTTP_200_OK,
+            content = {
+                "status_code": status.HTTP_200_OK,
+                "success": True,
+                "data": response_data,
+                "message": "Stock data retrieved successfully"
+            },
+        )
+        
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail":str(e)})
+        logger.error(f"Error fetching stock data for {symbol}: {e}")
+        error_message = str(e)
+
+        if "404 Client Error" in error_message:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "success": False,
+                    "data": None,
+                    "message": f"Stock {symbol} not found"
+                }
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "data": None,
+                "message": "Internal server error",
+            },
+        )
     
 
 @router.get("/dividend/{symbol}")
-async def get_stock_dividend(symbol:str, user_email: str= Depends(verify_jwt)):
+# async def get_stock_dividend(symbol:str, user_email: str= Depends(verify_jwt)):
+async def get_stock_dividend(symbol:str):
     try:
         stock = yf.Ticker(symbol)
         stock_info = stock.info
@@ -57,7 +101,8 @@ async def get_stock_dividend(symbol:str, user_email: str= Depends(verify_jwt)):
         
     
 @router.get("/history/{symbol}")
-async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"), user_email: str = Depends(verify_jwt)):
+# async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"), user_email: str = Depends(verify_jwt)):
+async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$")):
     try:
         stock = yf.Ticker(symbol)
         history = stock.history(period=period)
@@ -79,7 +124,8 @@ async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5
 
 
 @router.get("/impindex/")
-async def get_index( user_email: str= Depends(verify_jwt)):
+# async def get_index( user_email: str= Depends(verify_jwt)):
+async def get_index():
     try:
         nifty50 = yf.Ticker("^NSEI")
         sensex = yf.Ticker("^BSESN")
