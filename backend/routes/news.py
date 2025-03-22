@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 today_date = date.today().strftime('%Y-%m-%d')
-yesterday_date = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+two_days_date = (date.today() - timedelta(days=2)).strftime('%Y-%m-%d')
 
 @router.get("/")
 def get_sm_news():
     try:
         
-        url = f"https://newsapi.org/v2/everything?q=india+stock+market+nse+bse&from={yesterday_date}&to={today_date}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+        url = f"https://newsapi.org/v2/everything?q=india+stock+market+nse+bse&from={two_days_date}&to={today_date}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
         # url=""
         print(url)
         response = requests.get(url)
