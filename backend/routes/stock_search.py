@@ -90,14 +90,57 @@ async def get_stock_dividend(symbol:str):
         stock_info = stock.info
         
         if not stock_info:
-            return JSONResponse(status_code=404, content={"detail":"Stock dividend history not found"})
-        return{
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "success": False,
+                    "data": None,
+                    "message": f"Stock {symbol} Dividend History not found"
+                }
+            )
+            
+        response_data={
             "dividend_yield": stock_info.get("dividendYield", "N/A"),
             "last_dividend": stock_info.get("lastDividendValue", "N/A"),
             "dividend_history": stock.dividends.to_dict()
         }
+        
+        return JSONResponse(
+            status_code = status.HTTP_200_OK,
+            content = {
+                "status_code": status.HTTP_200_OK,
+                "success": True,
+                "data": response_data,
+                "message": "Stock dividend data retrieved successfully"
+            },
+        )
+        
+        
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail":str(e)})
+        logger.error(f"Error fetching stock data for {symbol}: {e}")
+        error_message = str(e)
+
+        if "404 Client Error" in error_message:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "success": False,
+                    "data": None,
+                    "message": f"Stock {symbol} dividend historynot found"
+                }
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "data": None,
+                "message": "Internal server error",
+            },
+        )
         
     
 @router.get("/history/{symbol}")
@@ -127,35 +170,69 @@ async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5
 # async def get_index( user_email: str= Depends(verify_jwt)):
 async def get_index():
     try:
-        nifty50 = yf.Ticker("^NSEI")
-        sensex = yf.Ticker("^BSESN")
-        bank_nifty = yf.Ticker("^NSEBANK")
-        usd_inr = yf.Ticker("USDINR=X")
-        
-        nifty_price = round(nifty50.history(period="1d")["Close"].iloc[-1], 2)
-        sensex_price = round(sensex.history(period="1d")["Close"].iloc[-1], 2)
-        bank_nifty_price = round(bank_nifty.history(period="1d")["Close"].iloc[-1], 2)
-        usd_inr_price = round(usd_inr.history(period="1d")["Close"].iloc[-1], 2)
-        
-        nifty_prev_close = round(nifty50.info.get("previousClose", 0), 2)
-        sensex_prev_close = round(sensex.info.get("previousClose", 0), 2)
-        bank_nifty_prev_close = round(bank_nifty.info.get("previousClose", 0), 2)
-        usd_inr_prev_close = round(usd_inr.info.get("previousClose", 0), 2)
-
-        # Calculate percentage change
-        def calculate_change(current, prev):
-            return round(((current - prev) / prev) * 100, 2) if prev else "N/A"
-
-        return {
-            "Nifty 50": {"Price": nifty_price, "Change (%)": calculate_change(nifty_price, nifty_prev_close)},
-            "Sensex": {"Price": sensex_price, "Change (%)": calculate_change(sensex_price, sensex_prev_close)},
-            "Bank Nifty": {"Price": bank_nifty_price, "Change (%)": calculate_change(bank_nifty_price, bank_nifty_prev_close)},
-            "USD/INR": {"Price": usd_inr_price, "Change (%)": calculate_change(usd_inr_price, usd_inr_prev_close)}
+        tickers = {
+            "Nifty 50": "^NSEI",
+            "Sensex": "^BSESN",
+            "Bank Nifty": "^NSEBANK",
+            "USD/INR": "USDINR",
         }
-        
+
+        def get_price(ticker_symbol):
+            try:
+                ticker = yf.Ticker(ticker_symbol)
+                history = ticker.history(period="1d")
+                if history.empty:
+                    return None  # Return None if no data
+                return round(history["Close"].iloc[-1], 2)
+            except Exception as e:
+                logger.error(f"Error fetching price for {ticker_symbol}: {e}")
+                return None
+
+        def get_previous_close(ticker_symbol):
+            try:
+                ticker = yf.Ticker(ticker_symbol)
+                prev_close = ticker.info.get("previousClose", 0)
+                return round(prev_close, 2) if prev_close else None
+            except Exception as e:
+                logger.error(f"Error fetching previous close for {ticker_symbol}: {e}")
+                return None
+
+        def calculate_change(current, prev):
+            if current is None or prev is None or prev == 0:
+                return "N/A"
+            return round(((current - prev) / prev) * 100, 2)
+
+        response_data = {}
+        for name, symbol in tickers.items():
+            price = get_price(symbol)
+            prev_close = get_previous_close(symbol)
+
+            if price is not None and prev_close is not None:
+                response_data[name] = {"Price": price, "Change (%)": calculate_change(price, prev_close)}
+            else:
+                response_data[name] = {"Price": "N/A", "Change (%)": "N/A"}
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status_code": status.HTTP_200_OK,
+                "success": True,
+                "data": response_data,
+                "message": "Index data retrieved successfully"
+            }
+        )
+
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail":str(e)})
-    
+        logger.error(f"Error fetching index data: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "data": None,
+                "message": f"Internal server error: {e}"
+            }
+        )
 
 
 
