@@ -12,6 +12,18 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+def convert_market_cap_to_cr(market_cap: int) -> str:
+    """Converts market cap to crores (Cr) with appropriate formatting."""
+    if market_cap is None or market_cap == "N/A":
+        return "N/A"
+
+    try:
+        market_cap = int(market_cap)  
+        billion = market_cap / 1000000000  
+        return f"{billion:.2f} Bi"  
+    except (ValueError, TypeError):
+        return "N/A"  
+
 @router.get("/{symbol}")
 # async def get_stock_data(symbol: str, user_email: str = Depends(verify_jwt)):
 async def get_stock_data(symbol: str):
@@ -31,12 +43,14 @@ async def get_stock_data(symbol: str):
                 }
             )
         
+        market_cap_cr = convert_market_cap_to_cr(stock_info.get("marketCap"))
+        
         response_data = {
             "company_name": stock_info.get("longName", "N/A"),
             "symbol": stock_info.get("symbol", "N/A"),
             "current_price": stock_info.get("currentPrice", "N/A"),
             "previous_close": stock_info.get("previousClose", "N/A"),
-            "market_cap": stock_info.get("marketCap", "N/A"),
+            "market_cap": market_cap_cr,
             "sector": stock_info.get("sector", "N/A"),
             "industry": stock_info.get("industry", "N/A"),
             "logo_url": stock_info.get("logo_url", ""),
@@ -142,25 +156,36 @@ async def get_stock_dividend(symbol:str):
             },
         )
         
+
+
+def get_interval(period: str):
+    if period in ['1d', '5d']:
+        return "1m"
+    elif period in ['1mo', '3mo', '6mo']:
+        return "1d"
+    else:
+        return "1d" 
+    
     
 @router.get("/history/{symbol}")
 # async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"), user_email: str = Depends(verify_jwt)):
-async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$")):
+async def get_stock_history(symbol:str, period:str = Query ('1d', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y)$")):
     try:
         stock = yf.Ticker(symbol)
-        history = stock.history(period=period)
+        interval = get_interval(period)
+        history = stock.history(period=period, interval=interval)
         
         if history.empty:
             return JSONResponse(status_code=404, content={'detail':"No historical data found"})
         
         return {
             "symbol": symbol,
-            "dates": history.index.strftime("%Y-%m-%d").tolist(),
-            "open": history["Open"].tolist(),
-            "high": history["High"].tolist(),
-            "low": history["Low"].tolist(),
-            "close": history["Close"].tolist(),
-            "volume": history["Volume"].tolist()
+            "dates": history.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
+            "open": [round(x,2) for x in history["Open"].tolist()],
+            "high": [round(x,2) for x in history["High"].tolist()],
+            "low": [round(x,2) for x in history["Low"].tolist()],
+            "close": [round(x,2) for x in history["Close"].tolist()], #use this data for creating line chart
+            "volume": [round(x,2) for x in history["Volume"].tolist()]
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={'details':str(e)})
@@ -174,7 +199,7 @@ async def get_index():
             "Nifty 50": "^NSEI",
             "Sensex": "^BSESN",
             "Bank Nifty": "^NSEBANK",
-            "USD/INR": "USDINR",
+            "USD/INR": "USDINR=X",
         }
 
         def get_price(ticker_symbol):
