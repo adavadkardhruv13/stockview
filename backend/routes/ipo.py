@@ -1,48 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
-import requests, os
+import requests, os, logging
 from dotenv import load_dotenv
 from datetime import date, timedelta
+import yfinance as yf
 
 router = APIRouter()
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 today_date = date.today().strftime('%Y-%m-%d')
 yesterday_date = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-
-@router.get("/")
-def get_sm_news():
-    try:
-        
-        
-        
-        url = f"https://newsapi.org/v2/everything?q=india+stock+market+nse+bse&from={yesterday_date}&to={today_date}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
-        # url=""
-        print(url)
-        response = requests.get(url)
-        news_data = response.json()
-        
-        if "articles" not in news_data:
-            return JSONResponse(status_code=500, content={"detail": "Error fetching news"})
-        
-        articles=[]
-        
-        for article in news_data['articles'][:10]:
-            articles.append({
-                "title": article.get("title", "No Title"),
-                "description": article.get("description", "No Description"),
-                "url": article.get("url", "#"),
-                "image": article.get("urlToImage", ""),
-                "published_at": article.get("publishedAt", ""),
-                "source": article["source"].get("name", "Unknown Source"),
-            })
-            
-        return JSONResponse(content={"news":articles})
-    
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-    
 
 
 IPO_API_KEY = os.getenv("IPO_API_KEY") 
@@ -107,5 +76,3 @@ def get_ipo_details_closed():
 #     response = requests.get(url, headers=headers, params=querystring)
 
 #     return JSONResponse(response.json())
-
-
