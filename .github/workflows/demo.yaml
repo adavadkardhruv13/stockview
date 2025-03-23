@@ -2,7 +2,7 @@ name: Deploy
 on:
   push:
     branches:
-      - main
+      - sanket
 jobs:
   build:
     name: Build
