@@ -90,7 +90,7 @@ async def get_stock_earnings(symbol: str):
 async def get_recommended(symbol: str):
     try:
         stock = yf.Ticker(symbol)
-        recommendations = stock.recommendations  # Fetch stock recommendations
+        recommendations = stock.recommendations 
 
         if recommendations is None or recommendations.empty:
             logger.warning(f"Recommendation data is not available for {symbol}")
@@ -104,15 +104,32 @@ async def get_recommended(symbol: str):
                 },
             )
 
-        # Convert DataFrame to JSON-serializable format
         recommendations_dict = recommendations.reset_index().to_dict(orient="records")
+        main_recommendation = recommendations_dict[2]
+        
+        buy = main_recommendation['strongBuy'] + main_recommendation['buy']
+        hold = main_recommendation['hold'] 
+        sell = main_recommendation['strongSell'] + main_recommendation['sell']
+        
+        total = buy+hold+sell
+        
+        buypercent = round((buy / total) * 100, 2)
+        holdpercent = round((hold / total) * 100, 2)
+        sellpercent = round((sell / total) * 100, 2)
 
+        recommendation_ans = max(
+            [("BUY", buypercent), ("HOLD", holdpercent), ("SELL", sellpercent)],
+            key=lambda x: x[1]  
+        )
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
                 "status_code": status.HTTP_200_OK,
                 "success": True,
-                "data": recommendations_dict,
+                "data": {
+                "recommendation": recommendation_ans[0],  # BUY, SELL, or HOLD
+                "percentage": recommendation_ans[1],  # Highest percentage
+            },
                 "message": f"Recommendation data retrieved successfully for {symbol}",
             },
         )
