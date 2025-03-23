@@ -16,6 +16,10 @@ logger = logger = logging.getLogger(__name__)
 @router.get("/earning/{symbol}")
 async def get_stock_earnings(symbol: str):
     try:
+        
+        if "." not in symbol:
+            symbol += ".NS"
+            
         stock = yf.Ticker(symbol)
         income_stmt = stock.income_stmt
         # print(income_stmt)
@@ -89,6 +93,10 @@ async def get_stock_earnings(symbol: str):
 @router.get("/recommendation/{symbol}")
 async def get_recommended(symbol: str):
     try:
+        
+        if "." not in symbol:
+            symbol += ".NS"
+            
         stock = yf.Ticker(symbol)
         recommendations = stock.recommendations 
 

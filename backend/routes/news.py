@@ -49,6 +49,11 @@ def get_sm_news():
 @router.get("/news_per_Stock/{symbol}")
 async def get_stock_news(symbol: str):
     try:
+        
+        if "." not in symbol:
+            symbol += ".NS"
+            
+            
         stock = yf.Ticker(symbol)
         news = stock.news
 

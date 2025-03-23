@@ -29,6 +29,9 @@ def convert_market_cap_to_cr(market_cap: int) -> str:
 # async def get_stock_data(symbol: str, user_email: str = Depends(verify_jwt)):
 async def get_stock_data(symbol: str):
     try:
+        if "." not in symbol:
+            symbol += ".NS"
+            
         stock = yf.Ticker(symbol)
         stock_info = stock.info
         
@@ -101,6 +104,10 @@ async def get_stock_data(symbol: str):
 # async def get_stock_dividend(symbol:str, user_email: str= Depends(verify_jwt)):
 async def get_stock_dividend(symbol:str):
     try:
+        
+        if "." not in symbol:
+            symbol += ".NS"
+            
         stock = yf.Ticker(symbol)
         stock_info = stock.info
         
@@ -172,6 +179,10 @@ def get_interval(period: str):
 # async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"), user_email: str = Depends(verify_jwt)):
 async def get_stock_history(symbol:str, period:str = Query ('1d', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y)$")):
     try:
+        
+        if "." not in symbol:
+            symbol += ".NS"
+            
         stock = yf.Ticker(symbol)
         interval = get_interval(period)
         history = stock.history(period=period, interval=interval)
