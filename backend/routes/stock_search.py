@@ -5,7 +5,7 @@ from backend.auth import verify_jwt
 import sys, requests, logging
 sys.path.append(r"E:\stockview\venv\Lib\site-packages")
 import yfinance as yf
-import numpy as np
+from datetime import date
 
 
 router = APIRouter()
@@ -261,70 +261,6 @@ async def get_index():
         )
 
 
-@router.get("/earning/{symbol}")
-async def get_stock_earnings(symbol: str):
-    try:
-        stock = yf.Ticker(symbol)
-        income_stmt = stock.income_stmt
-        # print(income_stmt)
-
-        if income_stmt is None or income_stmt.empty:
-            return JSONResponse(
-                status_code=404,
-                content={"detail": f"Earnings data not found for {symbol}"},
-            )
 
         
-        if "Gross Profit" not in income_stmt.index:
-            return JSONResponse(
-                status_code=404,
-                content={"detail": f"Gross Profite data not available for {symbol}"},
-            )
-        
-        if "Net Income" not in income_stmt.index:
-            return JSONResponse(
-                status_code=404,
-                content={"detail": f"Net Income data not available for {symbol}"},
-            )
-            
-        net_income = income_stmt.loc["Net Income"].to_dict()
-        profit = income_stmt.loc["Gross Profit"].to_dict()
-
-
-        net_income_crores = {
-            str(key):  f"{round(value / 1e7, 2)} Cr" if value is not None else None
-            for key, value in net_income.items()
-        }
-        profit_crores = {
-            str(key):  f"{round(value / 1e7, 2)} Cr" if value is not None else None
-            for key, value in profit.items()
-        }
-
-
-        net_income_subset = dict(list(net_income_crores.items())[:1])
-        profit = dict(list(profit_crores.items())[:1])
-
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status_code": 200,
-                "success": True,
-                "data": {
-                    "net_income":net_income_subset,
-                    "Gross Profit": profit
-                },
-                "message": f"Earnings data retrieved successfully for {symbol} (in Cr)",
-            },
-        )
-
-    except Exception as e:
-        logger.error(f"Error getting earnings data for {symbol}: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status_code": 500,
-                "success": False,
-                "data": None,
-                "message": f"Internal server error: {e}",
-            },
-        )
+    
