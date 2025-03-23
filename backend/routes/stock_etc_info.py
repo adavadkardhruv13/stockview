@@ -86,4 +86,46 @@ async def get_stock_earnings(symbol: str):
 # yfinance.Ticker.get_mutualfund_holders
 # yfinance.Ticker.analyst_price_targets
 
+@router.get("/recommendation/{symbol}")
+async def get_recommended(symbol: str):
+    try:
+        stock = yf.Ticker(symbol)
+        recommendations = stock.recommendations  # Fetch stock recommendations
+
+        if recommendations is None or recommendations.empty:
+            logger.warning(f"Recommendation data is not available for {symbol}")
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "success": False,
+                    "data": None,
+                    "message": f"Recommendation data not found for {symbol}. Try another stock like AAPL or RELIANCE.NS.",
+                },
+            )
+
+        # Convert DataFrame to JSON-serializable format
+        recommendations_dict = recommendations.reset_index().to_dict(orient="records")
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status_code": status.HTTP_200_OK,
+                "success": True,
+                "data": recommendations_dict,
+                "message": f"Recommendation data retrieved successfully for {symbol}",
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting recommendation data for {symbol}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "data": None,
+                "message": f"Internal server error: {str(e)}",
+            },
+        )
 
