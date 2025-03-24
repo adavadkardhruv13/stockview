@@ -25,7 +25,7 @@ def convert_market_cap_to_cr(market_cap: int) -> str:
         return "N/A"  
 
 @router.websocket("/{symbol}")
-async def get_stock_data(websocket: WebSocket, symbol: str):
+async def get_stock_price(websocket: WebSocket, symbol: str):
     """WebSocket endpoint to fetch live stock data every second."""
     
     await websocket.accept()
@@ -48,21 +48,33 @@ async def get_stock_data(websocket: WebSocket, symbol: str):
                 await asyncio.sleep(1)
                 continue  # Retry after 1 second
 
-            market_cap_cr = convert_market_cap_to_cr(stock_info.get("marketCap"))
+            
+            
+            previous_closed = stock_info.get("previousClose")
+            current_price = stock_info.get("currentPrice")
+            
+            price_change = None
+            change_percentage = None
+            
+            if current_price and previous_closed is not None:
+                price_change = round((current_price - previous_closed), 2)
+                change_percentage = round((price_change/previous_closed)*100, 2)
 
             response_data = {
-                "company_name": stock_info.get("longName", "N/A"),
-                "symbol": stock_info.get("symbol", "N/A"),
+                # "company_name": stock_info.get("longName", "N/A"),
+                # "symbol": stock_info.get("symbol", "N/A"),
                 "current_price": stock_info.get("currentPrice", "N/A"),
                 "previous_close": stock_info.get("previousClose", "N/A"),
-                "market_cap": market_cap_cr,
-                "sector": stock_info.get("sector", "N/A"),
-                "industry": stock_info.get("industry", "N/A"),
-                "logo_url": stock_info.get("logo_url", ""),
-                "52_week_high": stock_info.get("fiftyTwoWeekHigh", "N/A"),
-                "52_week_low": stock_info.get("fiftyTwoWeekLow", "N/A"),
-                "pe_ratio": stock_info.get("trailingPE", "N/A"),
-                "dividendRate": stock_info.get("dividendRate", "N/A"),
+                "price_change": price_change,
+                "change_percentage": change_percentage,
+                # "market_cap": market_cap_cr,
+                # "sector": stock_info.get("sector", "N/A"),
+                # "industry": stock_info.get("industry", "N/A"),
+                # "logo_url": stock_info.get("logo_url", ""),
+                # "52_week_high": stock_info.get("fiftyTwoWeekHigh", "N/A"),
+                # "52_week_low": stock_info.get("fiftyTwoWeekLow", "N/A"),
+                # "pe_ratio": stock_info.get("trailingPE", "N/A"),
+                # "dividendRate": stock_info.get("dividendRate", "N/A"),
             }
 
             await websocket.send_json({
@@ -86,7 +98,57 @@ async def get_stock_data(websocket: WebSocket, symbol: str):
             "data": None,
             "message": "Internal server error",
         })
-    
+
+
+@router.get("/stock-details/{symbol}")
+def get_stock_details(symbol: str):
+    try:
+        
+        if "." not in symbol:
+            symbol += ".NS"
+        
+        stock = yf.Ticker(symbol)
+        stock_details = stock.info
+        
+        if not stock_details:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "success": False,
+                    "data": None,
+                    "message": f"Stock {symbol} Dividend History not found"
+                }
+            )
+            
+        market_cap_cr = convert_market_cap_to_cr(stock_details.get("marketCap"))
+        
+        response_data = {
+                "company_name": stock_details.get("longName", "N/A"),
+                "symbol": stock_details.get("symbol", "N/A"),
+                "market_cap": market_cap_cr,
+                "sector": stock_details.get("sector", "N/A"),
+                "logo_url": stock_details.get("logo_url", ""),
+                "52_week_high": stock_details.get("fiftyTwoWeekHigh", "N/A"),
+                "52_week_low": stock_details.get("fiftyTwoWeekLow", "N/A"),
+                "pe_ratio": round(stock_details.get("trailingPE"), 2) if stock_details.get("trailingPE") else "N/A",
+                "dividendRate": stock_details.get("dividendRate", "N/A"),
+            }
+        
+        return JSONResponse(
+            status_code = status.HTTP_200_OK,
+            content = {
+                "status_code": status.HTTP_200_OK,
+                "success": True,
+                "data": response_data,
+                "message": "Stock dividend data retrieved successfully"
+            },
+        )
+        
+        
+    except Exception as e:
+        logger.error(f"Error fetching stock data for {symbol}: {e}")
+        error_message = str(e)
 
 @router.get("/dividend/{symbol}")
 # async def get_stock_dividend(symbol:str, user_email: str= Depends(verify_jwt)):
@@ -182,10 +244,10 @@ async def get_stock_history(symbol:str, period:str = Query ('1d', regex="^(1d|5d
             "symbol": symbol,
             "dates": history.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
             "open": [round(x,2) for x in history["Open"].tolist()],
-            "high": [round(x,2) for x in history["High"].tolist()],
-            "low": [round(x,2) for x in history["Low"].tolist()],
+            # "high": [round(x,2) for x in history["High"].tolist()],
+            # "low": [round(x,2) for x in history["Low"].tolist()],
             "close": [round(x,2) for x in history["Close"].tolist()], #use this data for creating line chart
-            "volume": [round(x,2) for x in history["Volume"].tolist()]
+            # "volume": [round(x,2) for x in history["Volume"].tolist()]
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={'details':str(e)})
