@@ -299,6 +299,8 @@ async def get_index(websocket: WebSocket):
             if current is None or prev is None or prev == 0:
                 return "N/A"
             return round(((current - prev) / prev) * 100, 2)
+        
+        
 
         while True:
             response_data = {}
@@ -307,8 +309,10 @@ async def get_index(websocket: WebSocket):
                 prev_close = await get_previous_close(symbol)
 
                 if price is not None and prev_close is not None:
+                    price_change = round((price - prev_close),2)
                     response_data[name] = {
                         "Price": price,
+                        "Price_change": price_change,
                         "Change (%)": calculate_change(price, prev_close)
                     }
                 else:
