@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Query, Depends, status
+from fastapi import APIRouter, Query, Depends, status, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-# import yfinance
 from backend.auth import verify_jwt
-import sys, requests, logging
+import sys, requests, logging, asyncio
 sys.path.append(r"E:\stockview\venv\Lib\site-packages")
 import yfinance as yf
 from datetime import date
@@ -25,79 +24,68 @@ def convert_market_cap_to_cr(market_cap: int) -> str:
     except (ValueError, TypeError):
         return "N/A"  
 
-@router.get("/{symbol}")
-# async def get_stock_data(symbol: str, user_email: str = Depends(verify_jwt)):
-async def get_stock_data(symbol: str):
+@router.websocket("/{symbol}")
+async def get_stock_data(websocket: WebSocket, symbol: str):
+    """WebSocket endpoint to fetch live stock data every second."""
+    
+    await websocket.accept()
+
+    if "." not in symbol:
+        symbol += ".NS"
+
     try:
-        if "." not in symbol:
-            symbol += ".NS"
-            
-        stock = yf.Ticker(symbol)
-        stock_info = stock.info
-        
-        
-        if not stock_info:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={
-                    "status_code": status.HTTP_404_NOT_FOUND,
+        while True:
+            stock = yf.Ticker(symbol)
+            stock_info = stock.info
+
+            if not stock_info:
+                await websocket.send_json({
+                    "status_code": 404,
                     "success": False,
                     "data": None,
                     "message": f"Stock {symbol} not found"
-                }
-            )
-        
-        market_cap_cr = convert_market_cap_to_cr(stock_info.get("marketCap"))
-        
-        response_data = {
-            "company_name": stock_info.get("longName", "N/A"),
-            "symbol": stock_info.get("symbol", "N/A"),
-            "current_price": stock_info.get("currentPrice", "N/A"),
-            "previous_close": stock_info.get("previousClose", "N/A"),
-            "market_cap": market_cap_cr,
-            "sector": stock_info.get("sector", "N/A"),
-            "industry": stock_info.get("industry", "N/A"),
-            "logo_url": stock_info.get("logo_url", ""),
-            "52_week_high": stock_info.get("fiftyTwoWeekHigh", "N/A"),
-            "52_week_low": stock_info.get("fiftyTwoWeekLow", "N/A"),
-            "pe_ratio": stock_info.get("trailingPE", "N/A"),
-            "dividendRate": stock_info.get("dividendRate", "N/A"),
-        }
-        
-        return JSONResponse(
-            status_code = status.HTTP_200_OK,
-            content = {
-                "status_code": status.HTTP_200_OK,
+                })
+                await asyncio.sleep(1)
+                continue  # Retry after 1 second
+
+            market_cap_cr = convert_market_cap_to_cr(stock_info.get("marketCap"))
+
+            response_data = {
+                "company_name": stock_info.get("longName", "N/A"),
+                "symbol": stock_info.get("symbol", "N/A"),
+                "current_price": stock_info.get("currentPrice", "N/A"),
+                "previous_close": stock_info.get("previousClose", "N/A"),
+                "market_cap": market_cap_cr,
+                "sector": stock_info.get("sector", "N/A"),
+                "industry": stock_info.get("industry", "N/A"),
+                "logo_url": stock_info.get("logo_url", ""),
+                "52_week_high": stock_info.get("fiftyTwoWeekHigh", "N/A"),
+                "52_week_low": stock_info.get("fiftyTwoWeekLow", "N/A"),
+                "pe_ratio": stock_info.get("trailingPE", "N/A"),
+                "dividendRate": stock_info.get("dividendRate", "N/A"),
+            }
+
+            await websocket.send_json({
+                "status_code": 200,
                 "success": True,
                 "data": response_data,
-                "message": "Stock data retrieved successfully"
-            },
-        )
-        
+                "message": "Real-time stock data update"
+            })
+
+            await asyncio.sleep(1)  # Fetch data every second
+
+    except WebSocketDisconnect:
+        logger.info(f"Client disconnected from {symbol}")
+
     except Exception as e:
         logger.error(f"Error fetching stock data for {symbol}: {e}")
-        error_message = str(e)
 
-        if "404 Client Error" in error_message:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={
-                    "status_code": status.HTTP_404_NOT_FOUND,
-                    "success": False,
-                    "data": None,
-                    "message": f"Stock {symbol} not found"
-                }
-            )
-
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "success": False,
-                "data": None,
-                "message": "Internal server error",
-            },
-        )
+        await websocket.send_json({
+            "status_code": 500,
+            "success": False,
+            "data": None,
+            "message": "Internal server error",
+        })
     
 
 @router.get("/dividend/{symbol}")
