@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .routes.auth_routes import router as auth_router
 from backend.routes.stock_search import router as search_router
 from backend.routes.charts import router as chart_router
@@ -10,6 +11,14 @@ from backend.routes.stock_etc_info import router as stockInfo_router
 
 app = FastAPI(debug=True)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"],  
+)
+
 app.include_router(auth_router, prefix = '/auth')
 app.include_router(search_router, prefix = '/stock')
 app.include_router(chart_router, prefix = '/chart')
@@ -20,4 +29,4 @@ app.include_router(stockInfo_router, prefix = '/stockInfo')
 
 @app.get("/")
 def home():
-    return{"Message":"B2B Authentication API is running"}
+    return{"Message":"StockView API is running"}
