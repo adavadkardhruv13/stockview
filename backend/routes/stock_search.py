@@ -204,8 +204,8 @@ async def get_index(websocket: WebSocket):
             "India VIX": "^INDIAVIX",
             "Nifty IT": "^CNXIT",
             "Nifty Auto": "^CNXAUTO",
-            "Gold MXC": "^GOLDM.NS",
-            "Silver MCX": "^SILVERM.NS",
+            # "Gold MXC": "^GOLDM.NS",
+            # "Silver MCX": "^SILVERM.NS",
         }
 
         async def get_price(ticker_symbol):
