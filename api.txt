@@ -1,0 +1,85 @@
+01. API Endpoint = ws://127.0.0.1:8000/stock/{symbol}   ---> this is for getting the price of a perticular stock in real time
+with price & percentage change using websocket
+
+Note: symbol is the stock's name
+
+Response = 
+{
+    "status_code": 200,
+    "success": true,
+    "data": {
+        "current_price": 425.5,
+        "previous_close": 407.8,
+        "price_change": 17.7,
+        "change_percentage": 4.34
+    },
+    "message": "Real-time stock data update"
+}
+
+02. API Endpoint = http://127.0.0.1:8000/stock/stock-details/{symbol}  ---> this is for getting all the other details of the stock
+
+
+Response =
+{
+  "status_code": 200,
+  "success": true,
+  "data": {
+    "company_name": "Power Finance Corporation Limited",
+    "symbol": "PFC.NS",
+    "market_cap": "1404.19 Bi",
+    "sector": "Financial Services",
+    "logo_url": "",
+    "52_week_high": 580,
+    "52_week_low": 357.25,
+    "pe_ratio": 6.3,
+    "dividendRate": 14
+  },
+  "message": "Stock dividend data retrieved successfully"
+}
+
+
+03. API Endpoint = ws://127.0.0.1:8000/stock/impindex/  ---> this is for the top vala box stock_detail page
+
+Response = 
+{
+    "status_code": 200,
+    "success": true,
+    "data": {
+        "Nifty 50": {
+            "Price": 23658.35,
+            "Price_change": 307.95,
+            "Change (%)": 1.32
+        },
+        "Sensex": {
+            "Price": 77984.38,
+            "Price_change": 1078.87,
+            "Change (%)": 1.4
+        },
+        "Bank Nifty": {
+            "Price": 51704.95,
+            "Price_change": 1111.4,
+            "Change (%)": 2.2
+        },
+        "USD/INR": {
+            "Price": 85.53,
+            "Price_change": -0.44,
+            "Change (%)": -0.51
+        },
+        "India VIX": {
+            "Price": 13.7,
+            "Price_change": 1.13,
+            "Change (%)": 8.99
+        },
+        "Nifty IT": {
+            "Price": 37217.05,
+            "Price_change": 514.25,
+            "Change (%)": 1.4
+        },
+        "Nifty Auto": {
+            "Price": 21938.7,
+            "Price_change": 182.7,
+            "Change (%)": 0.84
+        }
+    },
+    "message": "Index data retrieved successfully"
+}
