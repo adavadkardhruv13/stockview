@@ -191,32 +191,43 @@ async def get_stock_history(symbol:str, period:str = Query ('1d', regex="^(1d|5d
         return JSONResponse(status_code=500, content={'details':str(e)})
 
 
-@router.get("/impindex/")
+@router.websocket("/impindex/")
 # async def get_index( user_email: str= Depends(verify_jwt)):
-async def get_index():
+async def get_index(websocket: WebSocket):
+    await websocket.accept()
     try:
         tickers = {
             "Nifty 50": "^NSEI",
             "Sensex": "^BSESN",
             "Bank Nifty": "^NSEBANK",
             "USD/INR": "USDINR=X",
+            "India VIX": "^INDIAVIX",
+            "Nifty IT": "^CNXIT",
+            "Nifty Auto": "^CNXAUTO",
+            "Gold MXC": "^GOLDM.NS",
+            "Silver MCX": "^SILVERM.NS",
         }
 
-        def get_price(ticker_symbol):
+        async def get_price(ticker_symbol):
             try:
-                ticker = yf.Ticker(ticker_symbol)
-                history = ticker.history(period="1d")
+                loop = asyncio.get_event_loop()
+                ticker = await loop.run_in_executor(None, lambda: yf.Ticker(ticker_symbol))
+                history = await loop.run_in_executor(None, lambda: ticker.history(period="1d"))
+                
                 if history.empty:
-                    return None  # Return None if no data
+                    return None
                 return round(history["Close"].iloc[-1], 2)
             except Exception as e:
                 logger.error(f"Error fetching price for {ticker_symbol}: {e}")
                 return None
 
-        def get_previous_close(ticker_symbol):
+        async def get_previous_close(ticker_symbol):
             try:
-                ticker = yf.Ticker(ticker_symbol)
-                prev_close = ticker.info.get("previousClose", 0)
+                loop = asyncio.get_event_loop()
+                ticker = await loop.run_in_executor(None, lambda: yf.Ticker(ticker_symbol))
+                info = await loop.run_in_executor(None, lambda: ticker.info)
+                prev_close = info.get("previousClose", 0)
+                
                 return round(prev_close, 2) if prev_close else None
             except Exception as e:
                 logger.error(f"Error fetching previous close for {ticker_symbol}: {e}")
@@ -227,37 +238,40 @@ async def get_index():
                 return "N/A"
             return round(((current - prev) / prev) * 100, 2)
 
-        response_data = {}
-        for name, symbol in tickers.items():
-            price = get_price(symbol)
-            prev_close = get_previous_close(symbol)
+        while True:
+            response_data = {}
+            for name, symbol in tickers.items():
+                price = await get_price(symbol)
+                prev_close = await get_previous_close(symbol)
 
-            if price is not None and prev_close is not None:
-                response_data[name] = {"Price": price, "Change (%)": calculate_change(price, prev_close)}
-            else:
-                response_data[name] = {"Price": "N/A", "Change (%)": "N/A"}
+                if price is not None and prev_close is not None:
+                    response_data[name] = {
+                        "Price": price,
+                        "Change (%)": calculate_change(price, prev_close)
+                    }
+                else:
+                    response_data[name] = {
+                        "Price": "N/A",
+                        "Change (%)": "N/A"
+                    }
 
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "status_code": status.HTTP_200_OK,
+            await websocket.send_json({
+                "status_code": 200,
                 "success": True,
                 "data": response_data,
                 "message": "Index data retrieved successfully"
-            }
-        )
+            })
+            
+            await asyncio.sleep(1)  # Keep sending data every second
 
     except Exception as e:
         logger.error(f"Error fetching index data: {e}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "success": False,
-                "data": None,
-                "message": f"Internal server error: {e}"
-            }
-        )
+        await websocket.send_json({
+            "status_code": 500,
+            "success": False,
+            "data": None,
+            "message": f"Internal server error: {e}"
+        })
 
 
 
