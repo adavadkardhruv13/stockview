@@ -47,12 +47,10 @@ async def get_stock_price(websocket: WebSocket, symbol: str):
                 })
                 await asyncio.sleep(1)
                 continue  # Retry after 1 second
-
-<<<<<<< HEAD
             
-=======
+
             market_cap_cr = convert_market_cap_to_cr(stock_info.get("marketCap"))
->>>>>>> a2ae952efcb6afa9b894d703ef52635420f5e1fa
+
             
             previous_closed = stock_info.get("previousClose")
             current_price = stock_info.get("currentPrice")
@@ -71,7 +69,6 @@ async def get_stock_price(websocket: WebSocket, symbol: str):
                 "previous_close": stock_info.get("previousClose", "N/A"),
                 "price_change": price_change,
                 "change_percentage": change_percentage,
-<<<<<<< HEAD
                 # "market_cap": market_cap_cr,
                 # "sector": stock_info.get("sector", "N/A"),
                 # "industry": stock_info.get("industry", "N/A"),
@@ -79,17 +76,7 @@ async def get_stock_price(websocket: WebSocket, symbol: str):
                 # "52_week_high": stock_info.get("fiftyTwoWeekHigh", "N/A"),
                 # "52_week_low": stock_info.get("fiftyTwoWeekLow", "N/A"),
                 # "pe_ratio": stock_info.get("trailingPE", "N/A"),
-                # "dividendRate": stock_info.get("dividendRate", "N/A"),
-=======
-                "market_cap": market_cap_cr,
-                "sector": stock_info.get("sector", "N/A"),
-                "industry": stock_info.get("industry", "N/A"),
-                "logo_url": stock_info.get("logo_url", ""),
-                "52_week_high": stock_info.get("fiftyTwoWeekHigh", "N/A"),
-                "52_week_low": stock_info.get("fiftyTwoWeekLow", "N/A"),
-                "pe_ratio": stock_info.get("trailingPE", "N/A"),
-                "dividendRate": stock_info.get("dividendRate", "N/A"),
->>>>>>> a2ae952efcb6afa9b894d703ef52635420f5e1fa
+                # "dividendRate": stock_info.get("dividendRate", "N/A"),,
             }
 
             await websocket.send_json({
