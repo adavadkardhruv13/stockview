@@ -4,7 +4,7 @@ from backend.auth import verify_jwt
 import sys, requests, logging, asyncio
 sys.path.append(r"E:\stockview\venv\Lib\site-packages")
 import yfinance as yf
-from datetime import date
+from fastapi.websockets import WebSocketState
 
 
 router = APIRouter()
@@ -228,32 +228,39 @@ def get_interval(period: str):
     
     
 @router.get("/history/{symbol}")
-# async def get_stock_history(symbol:str, period:str = Query ('1mo', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"), user_email: str = Depends(verify_jwt)):
-async def get_stock_history(symbol:str, period:str = Query ('1d', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y)$")):
+async def get_stock_history( symbol: str, period: str = Query('1d', regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y)$")):
     try:
         
         if "." not in symbol:
             symbol += ".NS"
-            
-        stock = yf.Ticker(symbol)
-        interval = get_interval(period)
-        history = stock.history(period=period, interval=interval)
-        
-        if history.empty:
-            return JSONResponse(status_code=404, content={'detail':"No historical data found"})
-        
-        return {
-            "symbol": symbol,
-            "dates": history.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
-            "open": [round(x,2) for x in history["Open"].tolist()],
-            # "high": [round(x,2) for x in history["High"].tolist()],
-            # "low": [round(x,2) for x in history["Low"].tolist()],
-            "close": [round(x,2) for x in history["Close"].tolist()], #use this data for creating line chart
-            # "volume": [round(x,2) for x in history["Volume"].tolist()]
-        }
-    except Exception as e:
-        return JSONResponse(status_code=500, content={'details':str(e)})
 
+            
+            stock = yf.Ticker(symbol)
+            interval = get_interval(period)
+            history = stock.history(period=period, interval=interval)
+
+            if history.empty:
+                return ({
+                    "status_code": 404,
+                    "success": False,
+                    "message": "No historical data found"
+                })
+            else:
+                return({
+                    "symbol": symbol,
+                    "dates": history.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
+                    "open": [round(x, 2) for x in history["Open"].tolist()],
+                    "close": [round(x, 2) for x in history["Close"].tolist()]
+                })
+                    
+            
+    except Exception as e:
+        logger.error(f" Stock history retrieval error  {symbol}: {e}")
+        return({
+            "status_code": 500,
+            "success": False,
+            "error": str(e)
+        })
 
 @router.websocket("/impindex/")
 # async def get_index( user_email: str= Depends(verify_jwt)):
