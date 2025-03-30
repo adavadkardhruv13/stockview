@@ -19,7 +19,7 @@ def get_sm_news():
     try:
         
         url = f"https://newsapi.org/v2/everything?q=India+stock+market+NSE+BSE&from={three_days_date}&to={today_date}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
-        # url="https://newsapi.org/v2/top-headlines?country=IN&apiKey=7cf8c0d6d4844d7f9530542b6f1c308a"
+        
         print(url)
         response = requests.get(url)
         news_data = response.json()
