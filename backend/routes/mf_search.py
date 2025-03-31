@@ -9,18 +9,19 @@ load_dotenv()
 
 
 @router.get("/")
-def get_mf(fund_type: str = Query(all, description="Filter by fund type(Equity, Hybrid, Index, All)")):
+def get_mf(fund_type: str = Query("All", description="Filter by fund type (Equity, Hybrid, Index, All)")):
     try:
-        url = "https://indian-stock-exchange-api2.p.rapidapi.com/mutual_funds"
+        url = "https://stock.indianapi.in/mutual_funds"
         
         headers = {
-            "x-rapidapi-key": os.getenv("x-rapidapi-key"),
-	        "x-rapidapi-host": "indian-stock-exchange-api2.p.rapidapi.com"
+            "X-Api-Key": os.getenv("X-Api-Key") ,
+            # "x-rapidapi-host": "stock.indianapi.in"
         }
         
-        responses=requests.get(url, headers=headers)
+        responses = requests.get(url, headers=headers)
+
         data = responses.json()
-        
+
         if fund_type == 'Equity' and 'Equity' in data:
             return JSONResponse(data['Equity'])
         elif fund_type == 'Hybrid' and 'Hybrid' in data:
@@ -31,6 +32,8 @@ def get_mf(fund_type: str = Query(all, description="Filter by fund type(Equity, 
             return JSONResponse(data)
         else:
             return JSONResponse(status_code=404, content={"detail": f"Fund type '{fund_type}' not found."})
-    
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+    except requests.exceptions.RequestException as e:
+        return JSONResponse(status_code=500, content={"detail": f"Request error: {str(e)}"})
+    except ValueError as e:
+        return JSONResponse(status_code=500, content={"detail": f"Invalid JSON response: {str(e)}"})
