@@ -2,22 +2,25 @@ from fastapi import  APIRouter, Query
 import requests, os
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
+import logging
 
 
 router = APIRouter()
 load_dotenv()
-
+logging.basicConfig(level=logging.INFO)
 
 @router.get("/")
 def get_mf(fund_type: str = Query("All", description="Filter by fund type (Equity, Hybrid, Index, All)")):
     try:
         url = "https://stock.indianapi.in/mutual_funds"
         
+        api_key = os.getenv("X-Api-Key")
+        logging.info(f"API Key: {api_key}") # log the api key.
+
         headers = {
-            "X-Api-Key": os.getenv("X-Api-Key") ,
-            # "x-rapidapi-host": "stock.indianapi.in"
+            "X-Api-Key": api_key,
         }
-        
+        logging.info(f"Making request to: {url}")
         responses = requests.get(url, headers=headers)
 
         data = responses.json()
