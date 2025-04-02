@@ -25,8 +25,6 @@ ipo_collection = db["ipos"]
     
     
     
-    
-    
 
 def fetch_ipo_data():
     url = "https://indian-stock-exchange-api2.p.rapidapi.com/ipo"
@@ -62,7 +60,7 @@ async def get_ipos(category: str):
             content={"error": "Invalid category. Choose from 'upcoming', 'listed', 'active', 'closed'."}
         )
     
-    ipos = list(ipo_collection.find({'category': category}, {"_id": 0}))  # 🔥 Don't return `_id`
+    ipos = list(ipo_collection.find({'category': category}, {"_id": 0})) 
 
     if ipos:
         return JSONResponse(
@@ -99,9 +97,8 @@ async def get_ipos(category: str):
                     "last_updated": datetime.utcnow(),
                 }
 
-                ipo_data = serialize_dates(ipo_data)  # Convert date fields
-
-                # 🔥 FIXED: Corrected update_one syntax
+                ipo_data = serialize_dates(ipo_data)
+                
                 ipo_collection.update_one(
                     {"symbol": ipo.get("symbol")},
                     {"$set": ipo_data},
@@ -121,35 +118,3 @@ async def get_ipos(category: str):
     )
     
         
-## similarly can add for upcoming ipos, listed ipos, etc 
-
-
-## need to impement the stock market calendar
-
-# trade_API_KEY = "65b235c30740468:3y8ywr3sgsqgfva"
-
-# @router.get("/calendar")
-# def get_calendar_update():
-#     url = f'https://api.tradingeconomics.com/calendar/country/india?c={trade_API_KEY}'
-#     response = requests.get(url)
-    
-#     if response.status_code == 200:
-#         return response.json()
-#     else:
-#         return JSONResponse(status_code=response.status_code, content={"detail":response.text})
-
-# @router.get("/news")
-# def news():
-#     url = "https://livemint-api.p.rapidapi.com/news"
-
-#     querystring = {"name":"news"}
-
-#     headers = {
-#         "x-rapidapi-key": "59e73d2989msh8aadda9651e459cp1cef8bjsn49d2fbb8ccbe",
-#         "x-rapidapi-host": "livemint-api.p.rapidapi.com"
-#     }
-
-#     response = requests.get(url, headers=headers, params=querystring)
-
-#     return JSONResponse(response.json())
-

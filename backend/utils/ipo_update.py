@@ -56,7 +56,7 @@ def update_ipo_data():
             symbol = ipo.get("symbol")
             if not symbol:
                 logger.warning("Skipping IPO entry with missing symbol.")
-                continue  # Skip entries without a valid symbol
+                continue  
 
             ipo_data = {
                 "category": category_name,
@@ -82,7 +82,7 @@ def update_ipo_data():
             existing_data = ipo_collection.find_one({"symbol": symbol}, {"_id": 0})
             if existing_data and existing_data == ipo_data:
                 logger.info(f"Skipping update for {symbol}, no changes detected.")
-                continue  # Skip update if unchanged
+                continue  
             
             ipo_collection.update_one({"symbol": symbol}, {"$set": ipo_data}, upsert=True)
             logger.info(f"Updated IPO data for {symbol}")
