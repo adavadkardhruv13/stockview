@@ -14,25 +14,11 @@ logger = logging.getLogger(__name__)
 MONGO_URL = os.getenv("MONGO_URL_HOSTED")
 # print("🔗 MONGO_URL:", MONGO_URL)
 
-try:
-    client = MongoClient(MONGO_URL)
-    client.admin.command('ping') #check connection.
-    logger.info("Connected to MongoDB Atlas")
-    db = client["stockviewmain"]
-    ipo_collection = db["ipos"]
-except ConnectionFailure as e:
-    logger.error(f"Failed to connect to MongoDB Atlas: {e}")
-    client = None #set client to None, so that the rest of the application knows that the connection failed.
-except Exception as e:
-    logger.error(f"An unexpected error occured when connecting to MongoDB: {e}")
-    client = None
 
-if client:
-    # Your MongoDB operations here
-    # example. ipo_collection.insert_one({"example": "test"})
-    pass
-else:
-    logger.error("The rest of the program, that uses the database, will not be executed.")
+client = MongoClient(MONGO_URL)
+logger.info("Connected to MongoDB Atlas")
+db = client["stockviewmain"]
+ipo_collection = db["ipos"]
 
 
 
