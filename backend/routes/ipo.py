@@ -1,48 +1,141 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Query
 from fastapi.responses import JSONResponse
+from pymongo import MongoClient
 import requests, os, logging
 from dotenv import load_dotenv
-from datetime import date, timedelta
+from datetime import datetime, date
 import yfinance as yf
+from pymongo.errors import ConnectionFailure
+from backend.models import Ipo
+from typing import List
 
-router = APIRouter()
+
+
 load_dotenv()
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
-today_date = date.today().strftime('%Y-%m-%d')
-yesterday_date = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 
 
-IPO_API_KEY = os.getenv("IPO_API_KEY") 
 
-headers = {
-    "Authorization": f"Bearer {IPO_API_KEY}"
-}
+MONGO_URL = os.getenv("MONGO_URL_HOSTED")
+print("🔗 MONGO_URL:", MONGO_URL)
+try:
+    client = MongoClient(MONGO_URL)
+    client.admin.command('ping') #check connection.
+    logger.info("Connected to MongoDB Atlas")
+    db = client["stockviewmain"]
+    ipo_collection = db["ipos"]
+except ConnectionFailure as e:
+    logger.error(f"Failed to connect to MongoDB Atlas: {e}")
+    client = None #set client to None, so that the rest of the application knows that the connection failed.
+except Exception as e:
+    logger.error(f"An unexpected error occured when connecting to MongoDB: {e}")
+    client = None
 
-@router.get("/ipo-open")
-def get_ipo_details():
-    try:
-        response = requests.get("https://api.ipoalerts.in/ipos?status=open", headers=headers)
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return JSONResponse(status_code=response.status_code, content={"detail":response.text})
-    except ValueError as e:
-        return JSONResponse(status_code=500, content={"detail":f"JSON decoding failed: {e}"})
+if client:
+    # Your MongoDB operations here
+    # example. ipo_collection.insert_one({"example": "test"})
+    pass
+else:
+    logger.error("The rest of the program, that uses the database, will not be executed.")
     
-@router.get("/ipo-closed")
-def get_ipo_details_closed():
+    
+    
+    
+    
+
+def fetch_ipo_data():
+    url = "https://indian-stock-exchange-api2.p.rapidapi.com/ipo"
+
+    headers = {
+        "x-rapidapi-key": os.getenv("IPO_RAPID_API_KEY"),
+        "x-rapidapi-host": "indian-stock-exchange-api2.p.rapidapi.com"
+    }
+
     try:
-        response = requests.get("https://api.ipoalerts.in/ipos?status=closed", headers=headers)
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return JSONResponse(status_code=response.status_code, content={"detail":response.text})
-    except ValueError as e:
-        return JSONResponse(status_code=500, content={"detail":f"JSON decoding failed: {e}"})
+        response = requests.get(url, headers=headers)
+        logger.info("API hit")
+        response.raise_for_status()
+        return response.json()
+    
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch IPO data: {str(e)}")
+        return {}
+
+def serialize_dates(ipo_data):
+    """Convert date fields to ISO 8601 format if they exist."""
+    for key in ["bidding_start_date", "bidding_end_date", "listing_date", "last_updated"]:
+        if key in ipo_data and isinstance(ipo_data[key], (datetime, date)):
+            ipo_data[key] = ipo_data[key].isoformat()
+    return ipo_data
+
+@router.get("/{category}", response_model=List[Ipo])
+async def get_ipos(category: str):
+    valid_categories = ["upcoming", "listed", "active", "closed"]
+    if category not in valid_categories:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid category. Choose from 'upcoming', 'listed', 'active', 'closed'."}
+        )
+    
+    ipos = list(ipo_collection.find({'category': category}, {"_id": 0}))  # 🔥 Don't return `_id`
+
+    if ipos:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"category": category, "ipos": [serialize_dates(ipo) for ipo in ipos]}
+        )
+
+    # Fetch only if the entire database is empty
+    existing_ipo_count = ipo_collection.count_documents({})
+    if existing_ipo_count == 0:
+        logger.info("No IPO data in DB. Fetching from API...")
+        data = fetch_ipo_data()
+        new_ipos = []
+
+        for category_name, category_data in data.items():
+            for ipo in category_data:
+                ipo_data = {
+                    "category": category_name,
+                    "symbol": ipo.get("symbol"),
+                    "name": ipo.get("name"),
+                    "status": ipo.get("status"),
+                    "is_sme": ipo.get("is_sme"),
+                    "additional_text": ipo.get("additional_text"),
+                    "min_price": ipo.get("min_price"),
+                    "max_price": ipo.get("max_price"),
+                    "issue_price": ipo.get("issue_price"),
+                    "listing_gains": ipo.get("listing_gains"),
+                    "listing_price": ipo.get("listing_price"),
+                    "bidding_start_date": ipo.get("bidding_start_date"),
+                    "bidding_end_date": ipo.get("bidding_end_date"),
+                    "listing_date": ipo.get("listing_date"),
+                    "lot_size": ipo.get("lot_size"),
+                    "document_url": ipo.get("document_url"),
+                    "last_updated": datetime.utcnow(),
+                }
+
+                ipo_data = serialize_dates(ipo_data)  # Convert date fields
+
+                # 🔥 FIXED: Corrected update_one syntax
+                ipo_collection.update_one(
+                    {"symbol": ipo.get("symbol")},
+                    {"$set": ipo_data},
+                    upsert=True
+                )
+
+                new_ipos.append(Ipo(**ipo_data))
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"category": category, "ipos": [serialize_dates(ipo.dict()) for ipo in new_ipos]}
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"category": category, "ipos": []}  # No IPOs found for this category
+    )
     
         
 ## similarly can add for upcoming ipos, listed ipos, etc 
@@ -76,3 +169,4 @@ def get_ipo_details_closed():
 #     response = requests.get(url, headers=headers, params=querystring)
 
 #     return JSONResponse(response.json())
+
