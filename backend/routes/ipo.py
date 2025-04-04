@@ -8,7 +8,7 @@ import yfinance as yf
 from pymongo.errors import ConnectionFailure
 from backend.models import Ipo
 from typing import List
-from utils.ipo_update import update_ipo_data
+from backend.utils.ipo_update import update_ipo_data
 
 
 
