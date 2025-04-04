@@ -3,11 +3,12 @@ from fastapi.responses import JSONResponse
 from pymongo import MongoClient
 import requests, os, logging
 from dotenv import load_dotenv
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import yfinance as yf
 from pymongo.errors import ConnectionFailure
 from backend.models import Ipo
 from typing import List
+from utils.ipo_update import update_ipo_data
 
 
 
@@ -59,57 +60,22 @@ async def get_ipos(category: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": "Invalid category. Choose from 'upcoming', 'listed', 'active', 'closed'."}
         )
-    
-    ipos = list(ipo_collection.find({'category': category}, {"_id": 0})) 
+
+    # Check last update time to determine if a refresh is needed
+    last_updated_entry = ipo_collection.find_one({}, {"last_updated": 1, "_id": 0}, sort=[("last_updated", -1)])
+    last_updated = last_updated_entry.get("last_updated") if last_updated_entry else None
+
+    if not last_updated or (datetime.utcnow() - last_updated) > timedelta(days=2):
+        logger.info("IPO data is outdated. Triggering update...")
+        update_ipo_data()
+
+    # Retrieve IPOs from database
+    ipos = list(ipo_collection.find({'category': category}, {"_id": 0}))
 
     if ipos:
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"category": category, "ipos": [serialize_dates(ipo) for ipo in ipos]}
-        )
-
-    # Fetch only if the entire database is empty
-    existing_ipo_count = ipo_collection.count_documents({})
-    if existing_ipo_count == 0:
-        logger.info("No IPO data in DB. Fetching from API...")
-        data = fetch_ipo_data()
-        new_ipos = []
-
-        for category_name, category_data in data.items():
-            for ipo in category_data:
-                ipo_data = {
-                    "category": category_name,
-                    "symbol": ipo.get("symbol"),
-                    "name": ipo.get("name"),
-                    "status": ipo.get("status"),
-                    "is_sme": ipo.get("is_sme"),
-                    "additional_text": ipo.get("additional_text"),
-                    "min_price": ipo.get("min_price"),
-                    "max_price": ipo.get("max_price"),
-                    "issue_price": ipo.get("issue_price"),
-                    "listing_gains": ipo.get("listing_gains"),
-                    "listing_price": ipo.get("listing_price"),
-                    "bidding_start_date": ipo.get("bidding_start_date"),
-                    "bidding_end_date": ipo.get("bidding_end_date"),
-                    "listing_date": ipo.get("listing_date"),
-                    "lot_size": ipo.get("lot_size"),
-                    "document_url": ipo.get("document_url"),
-                    "last_updated": datetime.utcnow(),
-                }
-
-                ipo_data = serialize_dates(ipo_data)
-                
-                ipo_collection.update_one(
-                    {"symbol": ipo.get("symbol")},
-                    {"$set": ipo_data},
-                    upsert=True
-                )
-
-                new_ipos.append(Ipo(**ipo_data))
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"category": category, "ipos": [serialize_dates(ipo.dict()) for ipo in new_ipos]}
         )
 
     return JSONResponse(

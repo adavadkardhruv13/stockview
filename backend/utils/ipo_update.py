@@ -46,6 +46,7 @@ def serialize_dates(ipo_data):
     return ipo_data
 
 def update_ipo_data():
+    """Fetches and updates IPO data in MongoDB every 2 days."""
     data = fetch_ipo_data()
     if not data:
         logger.warning("No data fetched from IPO API.")
@@ -75,8 +76,9 @@ def update_ipo_data():
                 "listing_date": ipo.get("listing_date"),
                 "lot_size": ipo.get("lot_size"),
                 "document_url": ipo.get("document_url"),
-                "last_updated": datetime.now()
+                "last_updated": datetime.utcnow()
             }
+
             ipo_data = serialize_dates(ipo_data)
 
             existing_data = ipo_collection.find_one({"symbol": symbol}, {"_id": 0})
@@ -87,9 +89,10 @@ def update_ipo_data():
             ipo_collection.update_one({"symbol": symbol}, {"$set": ipo_data}, upsert=True)
             logger.info(f"Updated IPO data for {symbol}")
 
+# Schedule auto-update every 2 days
 scheduler = BackgroundScheduler()
 scheduler.add_job(update_ipo_data, "interval", days=2)
 scheduler.start()
 
-# Graceful shutdown
+# Ensure graceful shutdown
 atexit.register(lambda: scheduler.shutdown(wait=False))
