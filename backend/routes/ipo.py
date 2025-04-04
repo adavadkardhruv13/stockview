@@ -8,7 +8,7 @@ import yfinance as yf
 from pymongo.errors import ConnectionFailure
 from backend.models import Ipo
 from typing import List
-from backend.utils.ipo_update import update_ipo_data
+# from backend.utils.ipo_update import update_ipo_data
 
 
 
@@ -25,62 +25,107 @@ db = client["stockviewmain"]
 ipo_collection = db["ipos"]
     
     
-    
+
+# Cache Expiration Time (in hours)
+CACHE_EXPIRATION = 24
+
 
 def fetch_ipo_data():
     url = "https://indian-stock-exchange-api2.p.rapidapi.com/ipo"
-
     headers = {
         "x-rapidapi-key": os.getenv("IPO_RAPID_API_KEY"),
         "x-rapidapi-host": "indian-stock-exchange-api2.p.rapidapi.com"
     }
 
     try:
+        logging.info(f"Fetching IPO data from API: {url}")
         response = requests.get(url, headers=headers)
-        logger.info("API hit")
         response.raise_for_status()
-        return response.json()
-    
+        data = response.json()
+
+        # Debug: Check API response
+        # logging.info(f"IPO API Response: {data}")
+
+        return data if data else {}  # Ensure we return an empty dictionary if no data
+
     except requests.RequestException as e:
-        logger.error(f"Failed to fetch IPO data: {str(e)}")
+        logging.error(f"Failed to fetch IPO data: {str(e)}")
         return {}
 
-def serialize_dates(ipo_data):
-    """Convert date fields to ISO 8601 format if they exist."""
-    for key in ["bidding_start_date", "bidding_end_date", "listing_date", "last_updated"]:
-        if key in ipo_data and isinstance(ipo_data[key], (datetime, date)):
-            ipo_data[key] = ipo_data[key].isoformat()
-    return ipo_data
 
-@router.get("/{category}", response_model=List[Ipo])
-async def get_ipos(category: str):
-    valid_categories = ["upcoming", "listed", "active", "closed"]
-    if category not in valid_categories:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"error": "Invalid category. Choose from 'upcoming', 'listed', 'active', 'closed'."}
+
+
+# def serialize_dates(ipo_data):
+#      """Convert date fields to ISO 8601 format if they exist."""
+#      for key in ["bidding_start_date", "bidding_end_date", "listing_date", "last_updated"]:
+#          if key in ipo_data and isinstance(ipo_data[key], (datetime, date)):
+#              ipo_data[key] = ipo_data[key].isoformat()
+#      return ipo_data
+
+
+
+@router.get("/")
+def get_ipos(category: str = Query("active", description="Filter by IPO category (e.g., active, upcoming, listed)")):
+    try:
+        # Retrieve cached data
+        cached_data = ipo_collection.find_one({"category": category})
+
+        if cached_data:
+            last_updated = datetime.strptime(cached_data["last_updated"], "%Y-%m-%dT%H:%M:%S.%f")
+
+            # If cache is valid, return it
+            if datetime.utcnow() - last_updated < timedelta(hours=CACHE_EXPIRATION):
+                logging.info(f"Returning cached IPO data for category: {category}")
+                return JSONResponse(content={"category": category, "ipos": cached_data.get("data", [])})
+
+        # Fetch fresh data from API
+        data = fetch_ipo_data()
+
+        # 🔴 **Check if category exists in the response**
+        if category not in data:
+            logging.warning(f"Category '{category}' not found in API response. Returning empty list.")
+            return JSONResponse(content={"category": category, "ipos": []})
+
+        # Process IPO data
+        ipo_objects = []
+        for ipo in data[category]:  # ✅ Safe, since we checked if `category` exists
+            ipo_data = {
+                "category": category,
+                "symbol": ipo.get("symbol", "N/A"),
+                "name": ipo.get("name", "N/A"),
+                "status": ipo.get("status", "N/A"),
+                "is_sme": ipo.get("is_sme", False),
+                "additional_text": ipo.get("additional_text", ""),
+                "min_price": ipo.get("min_price", 0),
+                "max_price": ipo.get("max_price", 0),
+                "issue_price": ipo.get("issue_price", 0),
+                "listing_gains": ipo.get("listing_gains", 0),
+                "listing_price": ipo.get("listing_price", 0),
+                "bidding_start_date": ipo.get("bidding_start_date"),
+                "bidding_end_date": ipo.get("bidding_end_date"),
+                "listing_date": ipo.get("listing_date"),
+                "lot_size": ipo.get("lot_size", 0),
+                "document_url": ipo.get("document_url", ""),
+                "last_updated": datetime.utcnow().isoformat()
+            }
+            ipo_objects.append(ipo_data)
+
+        # Update MongoDB cache
+        ipo_collection.update_one(
+            {"category": category},
+            {"$set": {"data": ipo_objects, "last_updated": datetime.utcnow().isoformat()}},
+            upsert=True
         )
 
-    # Check last update time to determine if a refresh is needed
-    last_updated_entry = ipo_collection.find_one({}, {"last_updated": 1, "_id": 0}, sort=[("last_updated", -1)])
-    last_updated = last_updated_entry.get("last_updated") if last_updated_entry else None
+        logging.info(f"Updated IPO cache for category: {category}")
 
-    if not last_updated or (datetime.utcnow() - last_updated) > timedelta(days=2):
-        logger.info("IPO data is outdated. Triggering update...")
-        update_ipo_data()
+        return JSONResponse(content={"category": category, "ipos": ipo_objects})
 
-    # Retrieve IPOs from database
-    ipos = list(ipo_collection.find({'category': category}, {"_id": 0}))
+    except requests.exceptions.RequestException as e:
+        logging.error(f"IPO API request failed: {str(e)}")
+        return JSONResponse(status_code=500, content={"detail": f"Request error: {str(e)}"})
 
-    if ipos:
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"category": category, "ipos": [serialize_dates(ipo) for ipo in ipos]}
-        )
-
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={"category": category, "ipos": []}  # No IPOs found for this category
-    )
-    
+    except ValueError as e:
+        logging.error(f"Invalid JSON response from IPO API: {str(e)}")
+        return JSONResponse(status_code=500, content={"detail": f"Invalid JSON response: {str(e)}"})
         
