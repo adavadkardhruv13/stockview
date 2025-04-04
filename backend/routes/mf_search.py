@@ -125,9 +125,14 @@ def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Eq
 
         # Convert datetime to string before returning
         if cached_data and "data" in cached_data and cached_data["data"]:
-            return JSONResponse(content=[
-                {**Mf(**mf).dict(), "last_updated": mf["last_updated"]} for mf in cached_data["data"]
-            ])
+            mf_collection.update_one(
+                {"fund_type": fund_type},
+                {"$set": {
+                    "data": [mf.dict() for mf in mf_objects], 
+                    "last_updated": datetime.utcnow().isoformat()  # Ensure this is a string
+                }},
+                upsert=True
+            )
         else:
             logging.warning(f"No cached data found for fund type: {fund_type}")
 
