@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Query, Depends, status, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from backend.auth import verify_jwt
-import sys, requests, logging, asyncio
+import sys, os, requests, logging, asyncio
 sys.path.append(r"E:\stockview\venv\Lib\site-packages")
 import yfinance as yf
 from fastapi.websockets import WebSocketState
+from dotenv import load_dotenv
 
 
 router = APIRouter()
-
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -125,12 +126,16 @@ def get_stock_details(symbol: str):
             
         market_cap_cr = convert_market_cap_to_cr(stock_details.get("marketCap"))
         
+        token = os.getenv("LOGO_API")
+        comapny_symbol = stock_details.get("symbol", "")
+        logo_url = f"https://img.logo.dev/ticker/{comapny_symbol}?token={token}&retina=true"
+        
         response_data = {
                 "company_name": stock_details.get("longName", "N/A"),
                 "symbol": stock_details.get("symbol", "N/A"),
                 "market_cap": market_cap_cr,
                 "sector": stock_details.get("sector", "N/A"),
-                "logo_url": stock_details.get("logo_url", ""),
+                "logo_url": logo_url,
                 "52_week_high": stock_details.get("fiftyTwoWeekHigh", "N/A"),
                 "52_week_low": stock_details.get("fiftyTwoWeekLow", "N/A"),
                 "pe_ratio": round(stock_details.get("trailingPE"), 2) if stock_details.get("trailingPE") else "N/A",
