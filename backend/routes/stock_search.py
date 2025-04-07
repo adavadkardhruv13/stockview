@@ -46,7 +46,7 @@ async def get_stock_price(websocket: WebSocket, symbol: str):
                     "data": None,
                     "message": f"Stock {symbol} not found"
                 })
-                await asyncio.sleep(1)
+                await asyncio.sleep(5)
                 continue  # Retry after 1 second
             
 
@@ -87,7 +87,7 @@ async def get_stock_price(websocket: WebSocket, symbol: str):
                 "message": "Real-time stock data update"
             })
 
-            await asyncio.sleep(1)  # Fetch data every second
+            await asyncio.sleep(5)  # Fetch data 5 every second
 
     except WebSocketDisconnect:
         logger.info(f"Client disconnected from {symbol}")
@@ -343,7 +343,7 @@ async def get_index(websocket: WebSocket):
                 "message": "Index data retrieved successfully"
             })
             
-            await asyncio.sleep(1)  # Keep sending data every second
+            await asyncio.sleep(5)  # Keep sending data 5 every second
 
     except Exception as e:
         logger.error(f"Error fetching index data: {e}")
