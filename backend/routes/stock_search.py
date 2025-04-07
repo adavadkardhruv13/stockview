@@ -67,7 +67,7 @@ async def get_stock_price(websocket: WebSocket, symbol: str):
                 # "company_name": stock_info.get("longName", "N/A"),
                 # "symbol": stock_info.get("symbol", "N/A"),
                 "current_price": stock_info.get("currentPrice", "N/A"),
-                "previous_close": stock_info.get("previousClose", "N/A"),
+                
                 "price_change": price_change,
                 "change_percentage": change_percentage,
                 # "market_cap": market_cap_cr,
@@ -133,6 +133,7 @@ def get_stock_details(symbol: str):
         response_data = {
                 "company_name": stock_details.get("longName", "N/A"),
                 "symbol": stock_details.get("symbol", "N/A"),
+                "previous_close": stock_details.get("previousClose", "N/A"),
                 "market_cap": market_cap_cr,
                 "sector": stock_details.get("sector", "N/A"),
                 "logo_url": logo_url,
