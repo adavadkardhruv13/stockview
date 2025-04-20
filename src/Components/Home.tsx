@@ -1,30 +1,49 @@
 import search_icon from "../assets/search_icon.png";
 import loss from "../assets/loss.png";
 import profit from "../assets/profit.png";
+import { createContext, useState, useEffect, useContext } from 'react';
+import { useNavigate } from "react-router-dom";
 function Home() {
+
+  const userContext = createContext();
+  export const userContext = () => useContext(userContext);
+
+  
+  const navigate = useNavigate();
+
   const arr = [
     {
       stock_name: "Stock name",
       company: "Company Name",
       icon: loss,
       amount: 290.6,
-      percent : +1.81 
+      percent: +1.81,
     },
     {
       stock_name: "Stock name",
       company: "Company Name",
       icon: profit,
       amount: 146.06,
-      percent : +1.20 
+      percent: +1.2,
     },
     {
       stock_name: "Stock name",
       icon: profit,
       company: "Company Name",
       amount: 310.06,
-      percent : +1.20 
+      percent: +1.2,
     },
   ];
+  
+  const [userInput, setUserInput] = useState("");
+  function handleInput(e) {
+    setUserInput(e.target.value);
+  }
+  function handleSearch() {
+    console.log("Stock searched :", userInput);
+    navigate("/stock-detail")
+  }
+
   return (
     <div className="flex justify-center items-center mt-8 flex-col">
       <h2 className="font-[Gabarito] w-[40rem] text-center text-5xl">
@@ -45,8 +64,12 @@ function Home() {
           type="text"
           className="w-[280px] h-full outline-none"
           placeholder="Search Stock"
+          onChange={handleInput}
         />
-        <button className="bg-[#FFB700] font-[Gabarito] text-black h-full p-2 rounded-[9px] text-[15px] w-[70px] cursor-pointer">
+        <button
+          className="bg-[#FFB700] font-[Gabarito] text-black h-full p-2 rounded-[9px] text-[15px] w-[70px] cursor-pointer"
+          onClick={handleSearch}
+        >
           Search
         </button>
       </div>

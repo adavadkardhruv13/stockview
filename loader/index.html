@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .shapes {
+        width: 44.8px;
+        height: 67.19999999999999px;
+        color: #ffb700;
+        position: relative;
+      }
+
+      .shapes::before,
+      .shapes::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: currentColor;
+        clip-path: polygon(0 0, 100% 0, 100% 67%, 50% 67%, 50% 34%, 0 34%);
+        animation: shapes-ukq0pimd 2s infinite;
+      }
+
+      .shapes::after {
+        --s: -1, -1;
+      }
+
+      @keyframes shapes-ukq0pimd {
+        0%,
+        10% {
+          transform: scale(var(--s, 1)) translate(0, 0) rotate(0deg);
+        }
+
+        33% {
+          transform: scale(var(--s, 1)) translate(0, -22.4px) rotate(0deg);
+        }
+
+        66% {
+          transform: scale(var(--s, 1)) translate(11.2px, -22.4px)
+            rotate(-90deg);
+        }
+
+        90%,
+        100% {
+          transform: scale(var(--s, 1)) translate(11.2px, -11.2px)
+            rotate(-90deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shapes"></div>
+    
+  </body>
+</html>
