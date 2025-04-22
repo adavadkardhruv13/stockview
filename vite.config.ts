@@ -6,7 +6,4 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base : "/stockview/",
   plugins: [react(), tailwindcss()],
-  
-  
-  // base : '/stockview/'
 });
