@@ -1,9 +1,11 @@
-{
+{ "homepage": "https://adavadkardhruv13.github.io/stockview/",
   "name": "stockview",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predeploy" : "npm run build",
+    "deploy" : "gh-pages -d dist",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

@@ -5,8 +5,8 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from "react-router-dom";
 function Home() {
 
-  const userContext = createContext();
-  export const userContext = () => useContext(userContext);
+  // const userContext = createContext();
+  // export const userContext = () => useContext(userContext);
 
   
   const navigate = useNavigate();
