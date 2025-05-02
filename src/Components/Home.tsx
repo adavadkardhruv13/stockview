@@ -1,7 +1,8 @@
 import search_icon from "../assets/search_icon.png";
 import loss from "../assets/loss.png";
 import profit from "../assets/profit.png";
-import { createContext, useState, useEffect, useContext } from 'react';
+// import { createContext, useState, useEffect, useContext } from 'react';
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 function Home() {
 
