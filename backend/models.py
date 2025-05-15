@@ -30,7 +30,8 @@ class Ipo(BaseModel):
     bidding_end_date: Optional[date] = None
     listing_date: Optional[date] = None
     lot_size: Optional[int] = None
-    # document_url: str  
+    document_url: str  
+    logo_url : str
     last_updated: datetime = Field(default_factory=datetime.utcnow)
     
 class FundDetails(BaseModel):

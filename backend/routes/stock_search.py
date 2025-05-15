@@ -149,7 +149,7 @@ def get_stock_details(symbol: str):
                 "status_code": status.HTTP_200_OK,
                 "success": True,
                 "data": response_data,
-                "message": "Stock dividend data retrieved successfully"
+                "message": "Stock details retrieved successfully"
             },
         )
         

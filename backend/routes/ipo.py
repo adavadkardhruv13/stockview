@@ -46,8 +46,7 @@ def fetch_ipo_data():
         # Debug: Check API response
         # logging.info(f"IPO API Response: {data}")
 
-        return data if data else {}  # Ensure we return an empty dictionary if no data
-
+        return data if data else {}  
     except requests.RequestException as e:
         logging.error(f"Failed to fetch IPO data: {str(e)}")
         return {}
@@ -81,14 +80,21 @@ def get_ipos(category: str = Query("active", description="Filter by IPO category
         # Fetch fresh data from API
         data = fetch_ipo_data()
 
-        # 🔴 **Check if category exists in the response**
+
         if category not in data:
             logging.warning(f"Category '{category}' not found in API response. Returning empty list.")
             return JSONResponse(content={"category": category, "ipos": []})
 
-        # Process IPO data
+        
+        
+
         ipo_objects = []
-        for ipo in data[category]:  # ✅ Safe, since we checked if `category` exists
+        for ipo in data[category]:  
+            token = os.getenv('LOGO_API')
+            company_name = ipo.get("name")
+            company_query = company_name.replace(" ", "").lower()
+            logo_url = f"https://img.logo.dev/{company_query}.com?token={token}&retina=true"
+            
             ipo_data = {
                 "category": category,
                 "symbol": ipo.get("symbol", "N/A"),
@@ -106,11 +112,12 @@ def get_ipos(category: str = Query("active", description="Filter by IPO category
                 "listing_date": ipo.get("listing_date"),
                 "lot_size": ipo.get("lot_size", 0),
                 "document_url": ipo.get("document_url", ""),
+                "logo_url": logo_url,
                 "last_updated": datetime.utcnow().isoformat()
             }
             ipo_objects.append(ipo_data)
 
-        # Update MongoDB cache
+        
         ipo_collection.update_one(
             {"category": category},
             {"$set": {"data": ipo_objects, "last_updated": datetime.utcnow().isoformat()}},

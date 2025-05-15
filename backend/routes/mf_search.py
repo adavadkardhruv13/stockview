@@ -42,7 +42,7 @@ def map_api_fields_to_model(api_data: dict) -> dict:
 @router.get("/")
 def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Equity, Hybrid, Index Funds)")):
     try:
-        # Retrieve cached data
+        
         cached_data = mf_collection.find_one({"fund_type": fund_type})
 
         if cached_data:
@@ -51,7 +51,7 @@ def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Eq
             # If cache is still valid, return it
             if datetime.utcnow() - last_updated < timedelta(hours=CACHE_EXPIRATION):
                 logging.info("Returning cached data from MongoDB")
-                # Convert datetime to string before returning
+                
                 return JSONResponse(content=[
     {**Mf(**mf).dict(), "last_updated": mf["last_updated"].isoformat()} for mf in cached_data["data"]
 ])
@@ -72,15 +72,15 @@ def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Eq
         if fund_type != "All" and fund_type not in data:
             return JSONResponse(status_code=404, content={"detail": f"Fund category '{fund_type}' not found."})
 
-        # Store only relevant data (all funds or specific category)
+        
         filtered_data = data if fund_type == "All" else data.get(fund_type, {})
 
-        # Parse the data into a list of Mf objects.
+
         mf_objects = []
-        # logging.info(f"Filtered Data: {filtered_data}")
+        
         if fund_type == "All":
-            for category, funds in filtered_data.items():  # Iterate through categories and funds
-                if isinstance(funds, list): # Check if funds is a list.
+            for category, funds in filtered_data.items(): 
+                if isinstance(funds, list): 
                     for fund in funds:
                         try:
                             mapped_fund = {**fund, **map_api_fields_to_model(fund)}
@@ -95,7 +95,7 @@ def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Eq
             if isinstance(filtered_data, list):
                 for fund in filtered_data:
                     try:
-                        fund["fund_type"] = fund_type #add fund_type here.
+                        fund["fund_type"] = fund_type 
                         mf_objects.append(Mf(**fund))
                     except TypeError as e:
                         logging.error(f"Error creating Mf object: {e}, fund: {fund}")
@@ -114,7 +114,7 @@ def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Eq
                     else:
                         logging.error(f"Error, funds is not a list: {funds}")
 
-        # Update MongoDB cache
+        
         mf_collection.update_one(
             {"fund_type": fund_type},
             {"$set": {"data": [mf.dict() for mf in mf_objects], "last_updated": datetime.utcnow().isoformat()}},
@@ -123,13 +123,13 @@ def get_mf(fund_type: str = Query("Equity", description="Filter by fund type (Eq
 
         logging.info(f"Updated cache for category: {fund_type}")
 
-        # Convert datetime to string before returning
+        
         if cached_data and "data" in cached_data and cached_data["data"]:
             mf_collection.update_one(
                 {"fund_type": fund_type},
                 {"$set": {
                     "data": [mf.dict() for mf in mf_objects], 
-                    "last_updated": datetime.utcnow().isoformat()  # Ensure this is a string
+                    "last_updated": datetime.utcnow().isoformat() 
                 }},
                 upsert=True
             )
