@@ -1,4 +1,4 @@
-# 📈 StockView API
+# 📈 StockView
 
 **StockView** is a powerful FastAPI-based stock market analysis platform that brings together real-time stock prices, IPO tracking, mutual fund data, market news, and deep financial insights—all in one place.
 
