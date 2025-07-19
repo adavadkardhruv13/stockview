@@ -52,3 +52,6 @@ From live price feeds to historical analytics, from IPO data to mutual fund insi
 | **Logo.dev**      | Fetch company logos for clean UI display    |
 
 ---
+## Preview
+
+<img src="search-stock.png" alt="StockView Home Design" width="800"/>
